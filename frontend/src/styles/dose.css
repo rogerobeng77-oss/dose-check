@@ -1,0 +1,55 @@
+/* Dose Check additions: only what Plumbline's stylesheet has no class for. */
+.pagehead .crumb{font-size:13px;color:var(--brand);font-weight:600;display:inline-flex;gap:5px;align-items:center;margin-bottom:8px}
+.pagehead .crumb:hover{text-decoration:underline}
+.head-row{display:flex;align-items:flex-start;gap:16px}
+.head-row .sp{flex:1}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-top:20px}
+.stat{background:var(--white);border:1px solid var(--line);border-radius:var(--r-lg);padding:13px 16px}
+.stat b{display:block;font-size:24px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat span{font-size:12.5px;color:var(--muted)}
+.stat.f b{color:var(--fail)}.stat.p b{color:var(--pass)}
+.frow{display:flex;align-items:center;gap:13px;padding:13px 16px;width:100%;text-align:left;border-bottom:1px solid var(--line2)}
+.frow:hover{background:#FBFAF8}
+.frow .grow{flex:1;min-width:0}
+.frow .ttl{font-size:14.5px;font-weight:600;display:block}
+.frow .sub,.sub{font-size:12.5px;color:var(--muted)}
+.frow .dose{text-align:right;white-space:nowrap}
+.frow .dose b{display:block;font-size:15px;font-variant-numeric:tabular-nums}
+.chev{color:var(--faint);transition:transform .12s}
+.frow.open .chev{transform:rotate(90deg)}
+.fdetail{padding:4px 16px 16px 16px;border-bottom:1px solid var(--line2);background:#FCFBF9}
+.fdetail p{font-size:14px;color:var(--ink2);line-height:1.55;margin-top:8px}
+.fdetail .acts{margin-top:12px}
+.sup{margin-top:12px;border:1px solid #E2DDF7;background:var(--violet-w);border-radius:var(--r);padding:12px 14px}
+.sup .eyebrow{font-size:12.5px;font-weight:600;color:var(--violet)}
+.sup dl{display:grid;grid-template-columns:64px 1fr;gap:6px 12px;margin:10px 0 0;font-size:13.5px}
+.sup dt{color:var(--muted);font-weight:600}.sup dd{margin:0;color:var(--ink2)}
+.sup p{margin-top:6px}
+.kvs{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-top:12px}
+.kvs div b{display:block;font-size:19px;font-variant-numeric:tabular-nums}
+.pform{display:grid;grid-template-columns:repeat(3,1fr);gap:0 18px;padding:16px 16px 4px}
+.pform .field{max-width:none}
+.chips{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 16px;align-items:center}
+.chips .sp{flex:1}
+.err{color:var(--fail);font-size:13.5px;padding:10px 16px}
+.step{display:flex;gap:11px;align-items:flex-start;padding:10px 16px;border-bottom:1px solid var(--line2);font-size:13.5px;color:var(--ink2)}
+.step:last-child{border-bottom:0}
+.step .tag{flex:none;min-width:70px;text-align:center}
+.mt{margin-top:18px}
+.formula{margin:18px 0 0;padding:12px 14px;background:var(--white);border:1px solid var(--line);border-radius:var(--r-lg);font-size:13px;color:var(--muted)}
+.formula code{display:block;margin:4px 0;color:var(--ink)}
+.empty{padding:22px 16px;font-size:13.5px;color:var(--muted)}
+@media (max-width:1100px){.stats{grid-template-columns:repeat(2,1fr)}.pform{grid-template-columns:1fr 1fr}}
+.body .panel>header h2{margin:0}
+td .sub{display:block;margin-top:3px;white-space:normal}
+td .pill + .sub{display:block}
+/* hero: pull the prompt up, less empty canvas */
+.hero{padding:22px 24px 22px}
+.hero .promptwrap{margin-top:18px}
+/* safe-range bar on finding cards */
+.dbar{position:relative;height:36px;margin-top:10px}
+.dbar::before{content:"";position:absolute;left:0;right:0;top:9px;height:6px;border-radius:3px;background:#EFEDE9}
+.dbar .band{position:absolute;top:9px;height:6px;background:#9FD3B8;border-radius:3px}
+.dbar .tick{position:absolute;top:2px;width:3px;height:20px;margin-left:-1.5px;border-radius:2px;background:var(--fail)}
+.dbar .tl{position:absolute;top:0;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:500;color:var(--fail);line-height:24px;white-space:nowrap}
+.dbar .ax{white-space:nowrap;position:absolute;top:23px;transform:translateX(-50%);font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}

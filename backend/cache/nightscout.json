@@ -1,0 +1,523 @@
+{
+  "target": {
+    "id": "nightscout",
+    "name": "nightscout/cgm-remote-monitor (Bolus Wizard Preview)",
+    "repo": "https://github.com/nightscout/cgm-remote-monitor",
+    "commit": "92d0834",
+    "licence": "AGPL-3.0",
+    "stars": 2835,
+    "language": "JavaScript (Node)",
+    "unit_file": "lib/plugins/boluswizardpreview.js",
+    "run_mode": "The real boluswizardpreview.js is required and its real bwp.calc(sbx) runs against a faithful sandbox object; only lib/times is shimmed.",
+    "claimed_formula": "effect = IOB*sens ; outcome = BG - effect ; if outcome > target_high: bolus = (outcome - target_high)/sens   (IOB IS subtracted; refuses on missing info)"
+  },
+  "reference": {
+    "formula": "bolus = CHO/ICR + (G - G_target)/ISF - IOB",
+    "cite": "Zhu et al., Sensors 2020, Eq. 4 (PMC7570884, CC BY 4.0)"
+  },
+  "contract": {
+    "dose_function": [
+      "calc"
+    ],
+    "inputs": [
+      {
+        "name": "IOB",
+        "unit": "U",
+        "where_parsed": "sbx.properties.iob.iob"
+      },
+      {
+        "name": "Scaled SGV (G)",
+        "unit": "mg/dL",
+        "where_parsed": "sbx.lastScaledSGV()"
+      },
+      {
+        "name": "High BG Target",
+        "unit": "mg/dL",
+        "where_parsed": "profile.getHighBGTarget(sbx.time)"
+      },
+      {
+        "name": "Low BG Target",
+        "unit": "mg/dL",
+        "where_parsed": "profile.getLowBGTarget(sbx.time)"
+      },
+      {
+        "name": "Sensitivity (ISF)",
+        "unit": "mg/dL/U",
+        "where_parsed": "profile.getSensitivity(sbx.time)"
+      }
+    ],
+    "implemented_formula": "bolusEstimate = (scaledSGV - iob*ISF - target) / ISF",
+    "suspected_deviations": [
+      {
+        "claim": "Missing carbohydrate term (CHO/ICR) from reference formula",
+        "line_hint": "bolusEstimate = delta / sens",
+        "why_it_matters": "Ignores meal carbs, may under\u2011dose when food is present"
+      },
+      {
+        "claim": "No protection against zero or negative sensitivity (ISF)",
+        "line_hint": "delta / sens",
+        "why_it_matters": "Division by zero or negative ISF would produce invalid or unsafe bolus"
+      },
+      {
+        "claim": "No upper dose ceiling or safety limit on bolusEstimate",
+        "line_hint": "results.bolusEstimate = delta / sens",
+        "why_it_matters": "Could recommend excessively large bolus if inputs are extreme"
+      },
+      {
+        "claim": "Negative bolus values are allowed without clarification",
+        "line_hint": "results.bolusEstimate = delta / sens * -1",
+        "why_it_matters": "Negative bolus displayed as insulin reduction may be confusing to users"
+      },
+      {
+        "claim": "IOB is taken directly from sbx.properties.iob.iob without validation of missing or stale data",
+        "line_hint": "var iob = results.iob = sbx.properties.iob.iob || 0;",
+        "why_it_matters": "Stale IOB could lead to incorrect insulin on board correction"
+      }
+    ]
+  },
+  "tool_trace": [
+    {
+      "id": "gen-01",
+      "tool": "run_test",
+      "category": "input_validation",
+      "inputs": {
+        "bg": 0.5,
+        "iob": 0.0,
+        "sens": 50.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "returned": "Data isn't current"
+    },
+    {
+      "id": "gen-02",
+      "tool": "run_test",
+      "category": "input_validation",
+      "inputs": {
+        "bg": 1.5,
+        "iob": 0.0,
+        "sens": 50.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "returned": "Data isn't current"
+    },
+    {
+      "id": "gen-03",
+      "tool": "run_test",
+      "category": "missing_value",
+      "inputs": {
+        "iob": 0,
+        "sens": 50.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "returned": "Data isn't current"
+    },
+    {
+      "id": "gen-04",
+      "tool": "run_test",
+      "category": "divide_by_zero",
+      "inputs": {
+        "bg": 250.0,
+        "iob": 0.0,
+        "sens": 0.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "returned": "Missing sens, target_high, or target_low treatment profile fields"
+    },
+    {
+      "id": "gen-05",
+      "tool": "run_test",
+      "category": "upper_bound",
+      "inputs": {
+        "bg": 500.0,
+        "iob": 0.0,
+        "sens": 50.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "returned": 7.6
+    },
+    {
+      "id": "gen-06",
+      "tool": "run_test",
+      "category": "nominal",
+      "inputs": {
+        "bg": 180.0,
+        "iob": 2.0,
+        "sens": 50.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "returned": 0
+    },
+    {
+      "id": "gen-07",
+      "tool": "run_test",
+      "category": "iob_subtraction",
+      "inputs": {
+        "bg": 180.0,
+        "iob": 5.0,
+        "sens": 50.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "returned": -3
+    }
+  ],
+  "results": [
+    {
+      "case_id": "ns-high-noiob",
+      "category": "nominal",
+      "inputs": {
+        "bg": 250,
+        "iob": 0,
+        "sens": 50,
+        "target_high": 120,
+        "target_low": 80
+      },
+      "expected": "Match the reference formula within rounding",
+      "reference_U": 2.6,
+      "observed": 2.6,
+      "status": "pass",
+      "rule": "matches reference",
+      "severity": "info",
+      "detail": "2.6 U vs reference 2.60 U.",
+      "source": "seed",
+      "labelled_as": "nominal",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "errors": null,
+        "iob_effect": 0,
+        "outcome": 250,
+        "displayed_bolus": 2.6
+      }
+    },
+    {
+      "case_id": "ns-iob-covers",
+      "category": "iob_subtraction",
+      "inputs": {
+        "bg": 250,
+        "iob": 3,
+        "sens": 50,
+        "target_high": 120,
+        "target_low": 80
+      },
+      "expected": "Subtract active insulin (IOB) from the dose",
+      "reference_U": 0.0,
+      "observed": 0,
+      "status": "pass",
+      "rule": "IOB accounted for",
+      "severity": "info",
+      "detail": "",
+      "source": "seed",
+      "labelled_as": "iob_subtraction",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "errors": null,
+        "iob_effect": 150,
+        "outcome": 100,
+        "displayed_bolus": 0
+      }
+    },
+    {
+      "case_id": "ns-missing-iob",
+      "category": "missing_value",
+      "inputs": {
+        "bg": 250,
+        "noIob": true,
+        "sens": 50,
+        "target_high": 120,
+        "target_low": 80
+      },
+      "expected": "Block the calculation and prompt for the missing value",
+      "reference_U": 2.6,
+      "observed": "Missing IOB property",
+      "status": "pass",
+      "rule": "missing input was not turned into a dose",
+      "severity": "info",
+      "detail": "Calculator did not produce a dose from the missing field.",
+      "source": "seed",
+      "labelled_as": "missing_value",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "errors": [
+          "Missing IOB property"
+        ],
+        "iob_effect": 0,
+        "outcome": 0,
+        "displayed_bolus": null
+      }
+    },
+    {
+      "case_id": "ns-stale-sgv",
+      "category": "missing_value",
+      "inputs": {
+        "bg": 250,
+        "iob": 0,
+        "sens": 50,
+        "target_high": 120,
+        "target_low": 80,
+        "sgvCurrent": false
+      },
+      "expected": "Block the calculation and prompt for the missing value",
+      "reference_U": 2.6,
+      "observed": "Data isn't current",
+      "status": "pass",
+      "rule": "missing input was not turned into a dose",
+      "severity": "info",
+      "detail": "Calculator did not produce a dose from the missing field.",
+      "source": "seed",
+      "labelled_as": "missing_value",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "errors": [
+          "Data isn't current"
+        ],
+        "iob_effect": 0,
+        "outcome": 0,
+        "displayed_bolus": null
+      }
+    },
+    {
+      "case_id": "gen-01",
+      "category": "input_validation",
+      "inputs": {
+        "bg": 0.5,
+        "iob": 0.0,
+        "sens": 50.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "expected": "Reject the impossible input",
+      "reference_U": 0.0,
+      "observed": "Data isn't current",
+      "status": "pass",
+      "rule": "impossible input not turned into a dose",
+      "severity": "info",
+      "detail": "",
+      "source": "lightning",
+      "labelled_as": "input_validation",
+      "rationale": "Probe leading-decimal input \".5\" for sensor glucose to test if the calculator parses it correctly or treats it as invalid/missing",
+      "intended_U": null,
+      "raw": {
+        "errors": [
+          "Data isn't current"
+        ],
+        "iob_effect": 0,
+        "outcome": 0,
+        "displayed_bolus": null
+      }
+    },
+    {
+      "case_id": "gen-02",
+      "category": "input_validation",
+      "inputs": {
+        "bg": 1.5,
+        "iob": 0.0,
+        "sens": 50.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "expected": "Reject the impossible input",
+      "reference_U": 0.0,
+      "observed": "Data isn't current",
+      "status": "pass",
+      "rule": "impossible input not turned into a dose",
+      "severity": "info",
+      "detail": "",
+      "source": "lightning",
+      "labelled_as": "input_validation",
+      "rationale": "Probe comma decimal input \"1,5\" (European format) for sensor glucose to test locale parsing or rejection",
+      "intended_U": null,
+      "raw": {
+        "errors": [
+          "Data isn't current"
+        ],
+        "iob_effect": 0,
+        "outcome": 0,
+        "displayed_bolus": null
+      }
+    },
+    {
+      "case_id": "gen-03",
+      "category": "nominal",
+      "inputs": {
+        "iob": 0,
+        "sens": 50.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "expected": "Match the reference formula within rounding",
+      "reference_U": null,
+      "observed": "Data isn't current",
+      "status": "pass",
+      "rule": "no numeric reference to compare",
+      "severity": "info",
+      "detail": "",
+      "source": "lightning",
+      "labelled_as": "missing_value",
+      "rationale": "Probe blank required input \"iob\" (empty string) to verify it is not silently treated as zero",
+      "intended_U": null,
+      "raw": {
+        "errors": [
+          "Data isn't current"
+        ],
+        "iob_effect": 0,
+        "outcome": 0,
+        "displayed_bolus": null
+      }
+    },
+    {
+      "case_id": "gen-04",
+      "category": "divide_by_zero",
+      "inputs": {
+        "bg": 250.0,
+        "iob": 0.0,
+        "sens": 0.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "expected": "Reject a zero/blank ratio or sensitivity",
+      "reference_U": null,
+      "observed": "Missing sens, target_high, or target_low treatment profile fields",
+      "status": "pass",
+      "rule": "zero divisor not turned into a dose",
+      "severity": "info",
+      "detail": "",
+      "source": "lightning",
+      "labelled_as": "divide_by_zero",
+      "rationale": "Probe zero sensitivity (sens=0) to trigger division-by-zero in bolusEstimate = delta / sens",
+      "intended_U": null,
+      "raw": {
+        "errors": [
+          "Missing sens, target_high, or target_low treatment profile fields"
+        ],
+        "iob_effect": 0,
+        "outcome": 0,
+        "displayed_bolus": null
+      }
+    },
+    {
+      "case_id": "gen-05",
+      "category": "upper_bound",
+      "inputs": {
+        "bg": 500.0,
+        "iob": 0.0,
+        "sens": 50.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "expected": "Cap or warn above a safe maximum (~30 U)",
+      "reference_U": 7.6,
+      "observed": 7.6,
+      "status": "pass",
+      "rule": "dose within the flag ceiling",
+      "severity": "info",
+      "detail": "",
+      "source": "lightning",
+      "labelled_as": "upper_bound",
+      "rationale": "Probe very large glucose (500 mg/dL) as plausible-but-extreme input to check for unbounded dose",
+      "intended_U": null,
+      "raw": {
+        "errors": null,
+        "iob_effect": 0,
+        "outcome": 500,
+        "displayed_bolus": 7.6
+      }
+    },
+    {
+      "case_id": "gen-06",
+      "category": "nominal",
+      "inputs": {
+        "bg": 180.0,
+        "iob": 2.0,
+        "sens": 50.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "expected": "Match the reference formula within rounding",
+      "reference_U": 0.0,
+      "observed": 0,
+      "status": "pass",
+      "rule": "matches reference",
+      "severity": "info",
+      "detail": "0 U vs reference 0.00 U.",
+      "source": "lightning",
+      "labelled_as": "nominal",
+      "rationale": "Nominal in-range case with different numbers (bg=180, iob=2) to verify reference formula rounding",
+      "intended_U": null,
+      "raw": {
+        "errors": null,
+        "iob_effect": 100,
+        "outcome": 80,
+        "displayed_bolus": 0
+      }
+    },
+    {
+      "case_id": "gen-07",
+      "category": "iob_subtraction",
+      "inputs": {
+        "bg": 180.0,
+        "iob": 5.0,
+        "sens": 50.0,
+        "target_high": 120.0,
+        "target_low": 80.0
+      },
+      "expected": "Subtract active insulin (IOB) from the dose",
+      "reference_U": 0.0,
+      "observed": -3,
+      "status": "pass",
+      "rule": "IOB accounted for",
+      "severity": "info",
+      "detail": "",
+      "source": "lightning",
+      "labelled_as": "iob_subtraction",
+      "rationale": "Probe IOB subtraction with moderate on-board insulin (5 U) to verify IOB is properly subtracted and not stacked",
+      "intended_U": null,
+      "raw": {
+        "errors": null,
+        "iob_effect": 250,
+        "outcome": -70,
+        "displayed_bolus": -3
+      }
+    }
+  ],
+  "proof": null,
+  "summary": {
+    "tests": 11,
+    "passed": 11,
+    "failed": 0,
+    "true_defects": 0,
+    "by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0
+    }
+  },
+  "models": {
+    "locate_adjudicate_patch": "nvidia/nemotron-3-super-120b-a12b",
+    "test_tools": "nvidia/Nemotron-3_5-Lightning"
+  },
+  "usage": {
+    "nvidia/nemotron-3-super-120b-a12b": {
+      "in": 3881,
+      "out": 827,
+      "calls": 1
+    },
+    "nvidia/Nemotron-3_5-Lightning": {
+      "in": 4526,
+      "out": 1449,
+      "calls": 2
+    }
+  },
+  "cost_usd": 0.0025,
+  "seconds": 13.0,
+  "generated_at": "2026-10-04"
+}

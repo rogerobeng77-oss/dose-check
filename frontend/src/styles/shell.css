@@ -1,0 +1,87 @@
+/*
+ * Shell-only additions with no equivalent in design/preview.html (the
+ * prototype has no account menu). Kept separate from base.css so that file
+ * stays a verbatim lift of the approved design.
+ */
+
+.avatar-menu-root { position: relative; }
+
+.avatar-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 224px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh2);
+  padding: 12px;
+  z-index: 30;
+}
+
+.avatar-menu .plan-block {
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line2);
+}
+.avatar-menu .plan-block .plan-row { font-size: 13.5px; }
+.avatar-menu .plan-block small { display: block; margin-top: 8px; font-size: 12.5px; color: var(--faint); }
+
+.avatar-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--ink2);
+}
+.avatar-menu-item:hover { background: var(--hover); }
+
+/* Persistent demo-session banner (no equivalent in the prototype, which
+   has no notion of an active session). Sits above the page body inside
+   `.main` so it scrolls with content rather than the fixed topbar. */
+.demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 24px;
+  background: var(--brand-w);
+  border-bottom: 1px solid var(--brand-w2);
+  color: var(--brand);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.demo-banner .icon { color: var(--brand); flex: none; }
+.demo-banner a { text-decoration: underline; font-weight: 600; margin-left: auto; flex: none; }
+
+/* The prototype's OAuth row used <button data-go="home"> as a click-handler
+   stand-in; a real OAuth start is a GET navigation to the provider, so
+   SignIn renders these as <a href>. Same look as `.oauth button`. */
+.oauth a {
+  display: flex; align-items: center; justify-content: center; gap: 9px; padding: 9px;
+  border: 1px solid var(--line); border-radius: 7px; background: var(--white);
+  font-size: 14.5px; font-weight: 600; color: inherit; transition: border-color .12s;
+}
+.oauth a:hover { border-color: #D6D3CD; background: #FCFBF9; }
+
+/* Skeleton loading blocks (src/components/Skeleton.tsx, Table's
+   skeletonRows mode). No equivalent in the prototype, which never designed
+   a loading state -- shaped, not a spinner over blank content, per every
+   17a-17e brief. prefers-reduced-motion is handled globally in base.css
+   (`*{animation:none!important}`), so this shimmer needs no extra guard. */
+.skel {
+  display: inline-block;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #EDEBE7 25%, #F5F3EF 37%, #EDEBE7 63%);
+  background-size: 400% 100%;
+  animation: skel-shimmer 1.4s ease infinite;
+}
+@keyframes skel-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}

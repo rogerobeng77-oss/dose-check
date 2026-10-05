@@ -1,0 +1,800 @@
+{
+  "target": {
+    "id": "mxklb",
+    "name": "mxklb/boluscalculator",
+    "repo": "https://github.com/mxklb/boluscalculator",
+    "commit": "7d70c29",
+    "licence": "MIT",
+    "stars": 6,
+    "language": "JavaScript (browser)",
+    "unit_file": "js/main.js",
+    "run_mode": "The real js/main.js is loaded in a Node vm with a DOM stub; the project's own calcCorrection / calcEffectiveFood / updateCalculations run unchanged.",
+    "claimed_formula": "correction = (G - aim)/corr ;  meal = carbs * bolus / carbsFactor ;  final = correction + meal   (no IOB term)"
+  },
+  "reference": {
+    "formula": "bolus = CHO/ICR + (G - G_target)/ISF - IOB",
+    "cite": "Zhu et al., Sensors 2020, Eq. 4 (PMC7570884, CC BY 4.0)"
+  },
+  "contract": {
+    "dose_function": "updateCalculations",
+    "inputs": [
+      {
+        "name": "glucose",
+        "unit": "mg/dL if glucoseUnits==0 else mmol/L",
+        "where_parsed": "document.getElementById('glucose').value"
+      },
+      {
+        "name": "food",
+        "unit": "grams if foodUnits==1 else bread units",
+        "where_parsed": "document.getElementById('foodbe').value"
+      }
+    ],
+    "implemented_formula": "bolus = (glucose - aim) / corr + food * bolusFactor (with foodUnits conversion: if foodUnits>0 divide by carbsFactor)",
+    "suspected_deviations": [
+      {
+        "claim": "No subtraction of IOB (insulin on board) term",
+        "line_hint": "updateCalculations -> finalBolus = correction + effectiveFood",
+        "why_it_matters": "Reference formula includes - IOB; omission may over\u2011dose."
+      },
+      {
+        "claim": "Zero divisor risk when corr == 0",
+        "line_hint": "calcCorrection: var result = (glu - gluAim) / corr;",
+        "why_it_matters": "Division by zero yields Infinity or error, causing incorrect bolus."
+      },
+      {
+        "claim": "Missing check for negative correction or food values",
+        "line_hint": "updateCalculations uses correction and effectiveFood directly; no clamp to zero",
+        "why_it_matters": "Negative insulin doses are unsafe; should be prevented."
+      },
+      {
+        "claim": "No maximum dose ceiling enforced",
+        "line_hint": "updateCalculations sets bolusElement.value = finalBolus.toFixed(2);",
+        "why_it_matters": "Without a ceiling, extreme values could be recommended."
+      },
+      {
+        "claim": "Potential type\u2011coercion bug: empty field test uses assignment (food = \"\")",
+        "line_hint": "calcEffectiveFood: if( food = \"\" || factor == \"\" ) return NaN;",
+        "why_it_matters": "Always evaluates to false, breaking validation and possibly propagating NaN."
+      }
+    ]
+  },
+  "tool_trace": [
+    {
+      "id": "gen-01",
+      "tool": "run_test",
+      "category": "locale_decimal",
+      "inputs": {
+        "bg": ".5",
+        "carbs": "60",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "returned": "3.01"
+    },
+    {
+      "id": "gen-02",
+      "tool": "run_test",
+      "category": "locale_decimal",
+      "inputs": {
+        "bg": "1,5",
+        "carbs": "60",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "returned": ""
+    },
+    {
+      "id": "gen-03",
+      "tool": "run_test",
+      "category": "divide_by_zero",
+      "inputs": {
+        "bg": "150",
+        "carbs": "60",
+        "target": 100.0,
+        "isf": 0.0,
+        "icr": 12.0
+      },
+      "returned": ""
+    },
+    {
+      "id": "gen-04",
+      "tool": "run_test",
+      "category": "input_validation",
+      "inputs": {
+        "bg": "150",
+        "carbs": "-10",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "returned": "0.17"
+    },
+    {
+      "id": "gen-05",
+      "tool": "run_test",
+      "category": "upper_bound",
+      "inputs": {
+        "bg": "400",
+        "carbs": "200",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "returned": "22.67"
+    },
+    {
+      "id": "gen-06",
+      "tool": "run_test",
+      "category": "missing_value",
+      "inputs": {
+        "bg": "",
+        "carbs": "60",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "returned": ""
+    },
+    {
+      "id": "gen-07",
+      "tool": "run_test",
+      "category": "nominal",
+      "inputs": {
+        "bg": "180",
+        "carbs": "45",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "returned": "5.35"
+    },
+    {
+      "id": "gen-08",
+      "tool": "run_test",
+      "category": "missing_value",
+      "inputs": {
+        "bg": "150",
+        "carbs": "",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "returned": "1.00"
+    },
+    {
+      "id": "gen-09",
+      "tool": "run_test",
+      "category": "input_validation",
+      "inputs": {
+        "bg": "-50",
+        "carbs": "60",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "returned": "2.00"
+    },
+    {
+      "id": "gen-10",
+      "tool": "run_test",
+      "category": "upper_bound",
+      "inputs": {
+        "bg": "600",
+        "carbs": "500",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "returned": "51.67"
+    }
+  ],
+  "results": [
+    {
+      "case_id": "mxklb-nominal",
+      "category": "nominal",
+      "inputs": {
+        "bg": "150",
+        "carbs": "60",
+        "target": 100,
+        "isf": 50,
+        "icr": 12
+      },
+      "expected": "Match the reference formula within rounding",
+      "reference_U": 6.0,
+      "observed": "6.00",
+      "status": "pass",
+      "rule": "matches reference",
+      "severity": "info",
+      "detail": "6.00 U vs reference 6.00 U.",
+      "source": "seed",
+      "labelled_as": "nominal",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "correction_U": 1,
+        "meal_U": 5,
+        "displayed_bolus": "6.00"
+      }
+    },
+    {
+      "case_id": "mxklb-missing-glucose",
+      "category": "missing_value",
+      "inputs": {
+        "bg": "",
+        "carbs": "60",
+        "target": 100,
+        "isf": 50,
+        "icr": 12
+      },
+      "expected": "Block the calculation and prompt for the missing value",
+      "reference_U": null,
+      "observed": "",
+      "status": "pass",
+      "rule": "missing input was not turned into a dose",
+      "severity": "info",
+      "detail": "Calculator did not produce a dose from the missing field.",
+      "source": "seed",
+      "labelled_as": "missing_value",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "correction_U": "NaN",
+        "meal_U": 5,
+        "displayed_bolus": ""
+      }
+    },
+    {
+      "case_id": "mxklb-missing-meal",
+      "category": "missing_value",
+      "inputs": {
+        "bg": "150",
+        "carbs": "",
+        "target": 100,
+        "isf": 50,
+        "icr": 12
+      },
+      "expected": "Block the calculation and prompt for the missing value",
+      "reference_U": 1.0,
+      "observed": "1.00",
+      "status": "fail",
+      "rule": "missing input produced a finite dose",
+      "severity": "medium",
+      "detail": "A required field was blank yet the calculator showed 1.00 U, treating the missing value as zero.",
+      "source": "seed",
+      "labelled_as": "missing_value",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "correction_U": 1,
+        "meal_U": 0,
+        "displayed_bolus": "1.00"
+      },
+      "adjudication": {
+        "case_id": "mxklb-missing-meal",
+        "verdict": "true_defect",
+        "cause": "calcEffectiveFood: empty string '' is converted to number 0 when multiplied (food * factor)",
+        "explanation": "The code treats a missing carbs value as zero, producing a meal dose of 0\u202fU and a final bolus of 1.00\u202fU instead of rejecting the input.",
+        "fix": "Validate that the carbs input is a non\u2011empty numeric string before using it in calculations."
+      }
+    },
+    {
+      "case_id": "mxklb-negative-bg",
+      "category": "input_validation",
+      "inputs": {
+        "bg": "-50",
+        "carbs": "0",
+        "target": 100,
+        "isf": 50,
+        "icr": 12
+      },
+      "expected": "Reject the impossible input",
+      "reference_U": -3.0,
+      "observed": "-3.00",
+      "status": "fail",
+      "rule": "impossible input accepted",
+      "severity": "high",
+      "detail": "Input {'bg': '-50', 'carbs': '0', 'target': 100, 'isf': 50, 'icr': 12} is physically impossible yet the calculator returned -3.00 U instead of rejecting it.",
+      "source": "seed",
+      "labelled_as": "input_validation",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "correction_U": -3,
+        "meal_U": 0,
+        "displayed_bolus": "-3.00"
+      },
+      "adjudication": {
+        "case_id": "mxklb-negative-bg",
+        "verdict": "true_defect",
+        "cause": "calcCorrection: accepts any numeric value, including negative bg, producing (bg\u2011target)/ISF",
+        "explanation": "A negative blood\u2011glucose value (\u201150) yields a correction of \u20113\u202fU, leading to a bolus of \u20113.00\u202fU, which is clinically impossible.",
+        "fix": "Reject bg values outside a physiologic range (e.g., <\u202f0) and show an error message."
+      }
+    },
+    {
+      "case_id": "mxklb-negative-carbs",
+      "category": "input_validation",
+      "inputs": {
+        "bg": "150",
+        "carbs": "-80",
+        "target": 100,
+        "isf": 50,
+        "icr": 12
+      },
+      "expected": "Reject the impossible input",
+      "reference_U": -5.666666666666667,
+      "observed": "-5.67",
+      "status": "fail",
+      "rule": "impossible input accepted",
+      "severity": "high",
+      "detail": "Input {'bg': '150', 'carbs': '-80', 'target': 100, 'isf': 50, 'icr': 12} is physically impossible yet the calculator returned -5.67 U instead of rejecting it.",
+      "source": "seed",
+      "labelled_as": "input_validation",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "correction_U": 1,
+        "meal_U": -6.666666666666667,
+        "displayed_bolus": "-5.67"
+      },
+      "adjudication": {
+        "case_id": "mxklb-negative-carbs",
+        "verdict": "true_defect",
+        "cause": "calcEffectiveFood: multiplies the carbs value directly, allowing negative numbers",
+        "explanation": "Negative carbs (\u201180) produce a negative meal dose (\u20116.667\u202fU) and a bolus of \u20115.67\u202fU, which is nonsensical.",
+        "fix": "Check that carbs \u2265\u202f0 before computing the meal dose and alert the user otherwise."
+      }
+    },
+    {
+      "case_id": "mxklb-huge-carbs",
+      "category": "upper_bound",
+      "inputs": {
+        "bg": "150",
+        "carbs": "1000",
+        "target": 100,
+        "isf": 50,
+        "icr": 12
+      },
+      "expected": "Cap or warn above a safe maximum (~30 U)",
+      "reference_U": 84.33333333333333,
+      "observed": "84.33",
+      "status": "fail",
+      "rule": "dose exceeds a safe ceiling with no warning",
+      "severity": "high",
+      "detail": "The calculator showed 84.33 U with no upper-bound warning (Huckvale: most apps placed no dose limit).",
+      "source": "seed",
+      "labelled_as": "upper_bound",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "correction_U": 1,
+        "meal_U": 83.33333333333333,
+        "displayed_bolus": "84.33"
+      },
+      "adjudication": {
+        "case_id": "mxklb-huge-carbs",
+        "verdict": "true_defect",
+        "cause": "No upper\u2011bound check on carbs or resulting bolus in updateCalculations",
+        "explanation": "1000\u202fg carbs yields a meal dose of 83.33\u202fU and a total bolus of 84.33\u202fU, far above any safe limit with no warning.",
+        "fix": "Impose a maximum allowable bolus (e.g., 20\u202fU) and warn the user when the calculated dose exceeds it."
+      }
+    },
+    {
+      "case_id": "mxklb-leading-decimal",
+      "category": "locale_decimal",
+      "inputs": {
+        "bg": "150",
+        "carbs": ".6",
+        "target": 100,
+        "isf": 50,
+        "icr": 12
+      },
+      "expected": "Parse '0,5' as 0.5 or reject the input",
+      "reference_U": 1.05,
+      "observed": "1.05",
+      "status": "pass",
+      "rule": "comma decimal parsed to the intended dose",
+      "severity": "info",
+      "detail": "",
+      "source": "seed",
+      "labelled_as": "locale_decimal",
+      "rationale": "",
+      "intended_U": 1.05,
+      "raw": {
+        "correction_U": 1,
+        "meal_U": 0.049999999999999996,
+        "displayed_bolus": "1.05"
+      }
+    },
+    {
+      "case_id": "mxklb-comma-decimal",
+      "category": "locale_decimal",
+      "inputs": {
+        "bg": "150",
+        "carbs": "0,6",
+        "target": 100,
+        "isf": 50,
+        "icr": 12
+      },
+      "expected": "Parse '0,5' as 0.5 or reject the input",
+      "reference_U": 1.05,
+      "observed": "",
+      "status": "fail",
+      "rule": "comma decimal rejected without telling the user",
+      "severity": "medium",
+      "detail": "A comma decimal ({'bg': '150', 'carbs': '0,6', 'target': 100, 'isf': 50, 'icr': 12}) produced '' -- the calculator neither parsed it nor told the user why.",
+      "source": "seed",
+      "labelled_as": "locale_decimal",
+      "rationale": "",
+      "intended_U": 1.05,
+      "raw": {
+        "correction_U": 1,
+        "meal_U": "NaN",
+        "displayed_bolus": ""
+      },
+      "adjudication": {
+        "case_id": "mxklb-comma-decimal",
+        "verdict": "true_defect",
+        "cause": "parseFloat('0,6') returns NaN because the comma is not a valid decimal point",
+        "explanation": "The carbs input containing a comma produces NaN for the meal dose, making the final bolus blank without informing the user of the format error.",
+        "fix": "Replace commas with dots (or use locale\u2011aware parsing) before converting to float, and show an error if the input is invalid."
+      }
+    },
+    {
+      "case_id": "gen-01",
+      "category": "locale_decimal",
+      "inputs": {
+        "bg": ".5",
+        "carbs": "60",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "expected": "Parse '0,5' as 0.5 or reject the input",
+      "reference_U": 3.01,
+      "observed": "3.01",
+      "status": "pass",
+      "rule": "comma decimal parsed to the intended dose",
+      "severity": "info",
+      "detail": "",
+      "source": "lightning",
+      "labelled_as": "locale_decimal",
+      "rationale": "Probe leading-decimal input \".5\" to test if it parses as 0.5 or becomes something else (e.g., 5 or NaN). This exposes type-coercion bugs in the input handling.",
+      "intended_U": 3.01,
+      "raw": {
+        "correction_U": -1.99,
+        "meal_U": 5,
+        "displayed_bolus": "3.01"
+      }
+    },
+    {
+      "case_id": "gen-02",
+      "category": "locale_decimal",
+      "inputs": {
+        "bg": "1,5",
+        "carbs": "60",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "expected": "Parse '0,5' as 0.5 or reject the input",
+      "reference_U": 3.0300000000000002,
+      "observed": "",
+      "status": "fail",
+      "rule": "comma decimal rejected without telling the user",
+      "severity": "medium",
+      "detail": "A comma decimal ({'bg': '1,5', 'carbs': '60', 'target': 100.0, 'isf': 50.0, 'icr': 12.0}) produced '' -- the calculator neither parsed it nor told the user why.",
+      "source": "lightning",
+      "labelled_as": "locale_decimal",
+      "rationale": "Probe comma decimal \"1,5\" to see if it is recognized as 1.5 or misinterpreted. This directly tests the locale_decimal defect class that caused the FDA recall on Omnipod 5 iOS app.",
+      "intended_U": 3.0300000000000002,
+      "raw": {
+        "correction_U": "NaN",
+        "meal_U": 5,
+        "displayed_bolus": ""
+      },
+      "adjudication": {
+        "case_id": "gen-02",
+        "verdict": "true_defect",
+        "cause": "parseFloat('1,5') \u2192 NaN in calcCorrection, leaving correction NaN and bolus blank",
+        "explanation": "Blood\u2011glucose entered with a comma results in a NaN correction, so the final bolus is not displayed despite a valid carbs entry.",
+        "fix": "Accept both dot and comma as decimal separators (convert comma to dot) before parsing numbers."
+      }
+    },
+    {
+      "case_id": "gen-03",
+      "category": "nominal",
+      "inputs": {
+        "bg": "150",
+        "carbs": "60",
+        "target": 100.0,
+        "isf": 0.0,
+        "icr": 12.0
+      },
+      "expected": "Match the reference formula within rounding",
+      "reference_U": null,
+      "observed": "",
+      "status": "pass",
+      "rule": "no numeric reference to compare",
+      "severity": "info",
+      "detail": "",
+      "source": "lightning",
+      "labelled_as": "divide_by_zero",
+      "rationale": "Probe zero divisor: setting ISF (correction factor) to 0 forces division by zero in the correction term (glucose - target) / corr. The code should not produce Infinity or NaN.",
+      "intended_U": null,
+      "raw": {
+        "correction_U": "NaN",
+        "meal_U": 5,
+        "displayed_bolus": ""
+      }
+    },
+    {
+      "case_id": "gen-04",
+      "category": "input_validation",
+      "inputs": {
+        "bg": "150",
+        "carbs": "-10",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "expected": "Reject the impossible input",
+      "reference_U": 0.16666666666666663,
+      "observed": "0.17",
+      "status": "fail",
+      "rule": "impossible input accepted",
+      "severity": "high",
+      "detail": "Input {'bg': '150', 'carbs': '-10', 'target': 100.0, 'isf': 50.0, 'icr': 12.0} is physically impossible yet the calculator returned 0.17 U instead of rejecting it.",
+      "source": "lightning",
+      "labelled_as": "input_validation",
+      "rationale": "Probe negative carbohydrate input. The calculator should reject or safely handle negative carbs rather than producing a nonsensical bolus dose.",
+      "intended_U": null,
+      "raw": {
+        "correction_U": 1,
+        "meal_U": -0.8333333333333334,
+        "displayed_bolus": "0.17"
+      },
+      "adjudication": {
+        "case_id": "gen-04",
+        "verdict": "true_defect",
+        "cause": "calcEffectiveFood allows negative carbs (\u201110) \u2192 negative meal dose",
+        "explanation": "Negative carbs produce a meal dose of \u20110.833\u202fU, giving a bolus of 0.17\u202fU, which is clinically meaningless.",
+        "fix": "Reject negative carbs values and prompt the user to enter a non\u2011negative amount."
+      }
+    },
+    {
+      "case_id": "gen-05",
+      "category": "upper_bound",
+      "inputs": {
+        "bg": "400",
+        "carbs": "200",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "expected": "Cap or warn above a safe maximum (~30 U)",
+      "reference_U": 22.666666666666668,
+      "observed": "22.67",
+      "status": "pass",
+      "rule": "dose within the flag ceiling",
+      "severity": "info",
+      "detail": "",
+      "source": "lightning",
+      "labelled_as": "upper_bound",
+      "rationale": "Probe very large glucose (400 mg/dL) with high carbs (200 g) to see if the bolus grows without bound or hits an implicit ceiling. This tests the upper_bound defect.",
+      "intended_U": null,
+      "raw": {
+        "correction_U": 6,
+        "meal_U": 16.666666666666668,
+        "displayed_bolus": "22.67"
+      }
+    },
+    {
+      "case_id": "gen-06",
+      "category": "missing_value",
+      "inputs": {
+        "bg": "",
+        "carbs": "60",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "expected": "Block the calculation and prompt for the missing value",
+      "reference_U": null,
+      "observed": "",
+      "status": "pass",
+      "rule": "missing input was not turned into a dose",
+      "severity": "info",
+      "detail": "Calculator did not produce a dose from the missing field.",
+      "source": "lightning",
+      "labelled_as": "missing_value",
+      "rationale": "Probe missing bg (blank) while carbs provided. A missing measurement must not be silently treated as zero; the calculator should indicate an error or refuse to compute.",
+      "intended_U": null,
+      "raw": {
+        "correction_U": "NaN",
+        "meal_U": 5,
+        "displayed_bolus": ""
+      }
+    },
+    {
+      "case_id": "gen-07",
+      "category": "nominal",
+      "inputs": {
+        "bg": "180",
+        "carbs": "45",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "expected": "Match the reference formula within rounding",
+      "reference_U": 5.35,
+      "observed": "5.35",
+      "status": "pass",
+      "rule": "matches reference",
+      "severity": "info",
+      "detail": "5.35 U vs reference 5.35 U.",
+      "source": "lightning",
+      "labelled_as": "nominal",
+      "rationale": "In-range nominal case with different numbers than the seed (150/60). Should compute bolus = (180-100)/50 + 45/12 = 1.6 + 3.75 = 5.35 U, testing that the reference formula works with varied inputs.",
+      "intended_U": null,
+      "raw": {
+        "correction_U": 1.6,
+        "meal_U": 3.75,
+        "displayed_bolus": "5.35"
+      }
+    },
+    {
+      "case_id": "gen-08",
+      "category": "missing_value",
+      "inputs": {
+        "bg": "150",
+        "carbs": "",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "expected": "Block the calculation and prompt for the missing value",
+      "reference_U": 1.0,
+      "observed": "1.00",
+      "status": "fail",
+      "rule": "missing input produced a finite dose",
+      "severity": "medium",
+      "detail": "A required field was blank yet the calculator showed 1.00 U, treating the missing value as zero.",
+      "source": "lightning",
+      "labelled_as": "missing_value",
+      "rationale": "Probe missing carbs (blank) while bg provided. This tests the missing_value defect class; the calculator should not silently treat the blank carb count as zero.",
+      "intended_U": null,
+      "raw": {
+        "correction_U": 1,
+        "meal_U": 0,
+        "displayed_bolus": "1.00"
+      },
+      "adjudication": {
+        "case_id": "gen-08",
+        "verdict": "true_defect",
+        "cause": "Empty carbs string converts to 0 in calcEffectiveFood (same as mxklb\u2011missing\u2011meal)",
+        "explanation": "Missing carbs are treated as zero, yielding a bolus of 1.00\u202fU instead of an error.",
+        "fix": "Validate that the carbs field contains a numeric value before using it."
+      }
+    },
+    {
+      "case_id": "gen-09",
+      "category": "input_validation",
+      "inputs": {
+        "bg": "-50",
+        "carbs": "60",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "expected": "Reject the impossible input",
+      "reference_U": 2.0,
+      "observed": "2.00",
+      "status": "fail",
+      "rule": "impossible input accepted",
+      "severity": "high",
+      "detail": "Input {'bg': '-50', 'carbs': '60', 'target': 100.0, 'isf': 50.0, 'icr': 12.0} is physically impossible yet the calculator returned 2.00 U instead of rejecting it.",
+      "source": "lightning",
+      "labelled_as": "input_validation",
+      "rationale": "Probe negative glucose value. The calculator should reject or safely handle this physically impossible input rather than computing a potentially nonsensical bolus.",
+      "intended_U": null,
+      "raw": {
+        "correction_U": -3,
+        "meal_U": 5,
+        "displayed_bolus": "2.00"
+      },
+      "adjudication": {
+        "case_id": "gen-09",
+        "verdict": "true_defect",
+        "cause": "calcCorrection accepts negative bg (\u201150) \u2192 negative correction",
+        "explanation": "Negative bg leads to a \u20113\u202fU correction, offset by a 5\u202fU meal dose, resulting in a bolus of 2.00\u202fU despite impossible input.",
+        "fix": "Disallow negative blood\u2011glucose values and show an appropriate error."
+      }
+    },
+    {
+      "case_id": "gen-10",
+      "category": "upper_bound",
+      "inputs": {
+        "bg": "600",
+        "carbs": "500",
+        "target": 100.0,
+        "isf": 50.0,
+        "icr": 12.0
+      },
+      "expected": "Cap or warn above a safe maximum (~30 U)",
+      "reference_U": 51.666666666666664,
+      "observed": "51.67",
+      "status": "fail",
+      "rule": "dose exceeds a safe ceiling with no warning",
+      "severity": "high",
+      "detail": "The calculator showed 51.67 U with no upper-bound warning (Huckvale: most apps placed no dose limit).",
+      "source": "lightning",
+      "labelled_as": "upper_bound",
+      "rationale": "Probe extreme but in-type values: very high glucose (600) and very high carbs (500). This should reveal whether the bolus grows unbounded or is capped, testing the upper_bound defect.",
+      "intended_U": null,
+      "raw": {
+        "correction_U": 10,
+        "meal_U": 41.666666666666664,
+        "displayed_bolus": "51.67"
+      },
+      "adjudication": {
+        "case_id": "gen-10",
+        "verdict": "true_defect",
+        "cause": "No upper bound on carbs or bolus; large inputs produce excessive dose",
+        "explanation": "600\u202fmg/dL bg and 500\u202fg carbs give a bolus of 51.67\u202fU, exceeding safe limits with no warning.",
+        "fix": "Cap the calculated bolus at a clinically safe maximum and alert the user when the cap is applied."
+      }
+    }
+  ],
+  "proof": {
+    "find": "if( food = \"\" || factor == \"\" ) return NaN;",
+    "replace": "if( food === \"\" || factor === \"\" ) return NaN;",
+    "why": "Fixes the accidental assignment of an empty string to `food`, ensuring that a blank meal returns NaN instead of proceeding with calculation.",
+    "rerun": [
+      {
+        "case_id": "mxklb-missing-meal",
+        "before": "1.00",
+        "after": "",
+        "status_after": "pass"
+      },
+      {
+        "case_id": "gen-08",
+        "before": "1.00",
+        "after": "",
+        "status_after": "pass"
+      }
+    ]
+  },
+  "summary": {
+    "tests": 18,
+    "passed": 8,
+    "failed": 10,
+    "true_defects": 10,
+    "by_severity": {
+      "critical": 0,
+      "high": 6,
+      "medium": 4
+    }
+  },
+  "models": {
+    "locate_adjudicate_patch": "nvidia/nemotron-3-super-120b-a12b",
+    "test_tools": "nvidia/Nemotron-3_5-Lightning"
+  },
+  "usage": {
+    "nvidia/nemotron-3-super-120b-a12b": {
+      "in": 15831,
+      "out": 2716,
+      "calls": 3
+    },
+    "nvidia/Nemotron-3_5-Lightning": {
+      "in": 4890,
+      "out": 1221,
+      "calls": 2
+    }
+  },
+  "cost_usd": 0.0078,
+  "seconds": 24.0,
+  "generated_at": "2026-10-04"
+}

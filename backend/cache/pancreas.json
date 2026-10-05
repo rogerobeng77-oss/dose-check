@@ -1,0 +1,763 @@
+{
+  "target": {
+    "id": "pancreas",
+    "name": "Pancreas-Digital/bolus-calculator",
+    "repo": "https://github.com/Pancreas-Digital/bolus-calculator",
+    "commit": "90f9622",
+    "licence": "GPL-3.0",
+    "stars": 5,
+    "language": "JavaScript (React / Next.js)",
+    "unit_file": "components/Calculator/index.js",
+    "run_mode": "handleChange (Number(value)) and the handleSubmit formula are lifted verbatim from the component and run unchanged; the component's React/Chakra shell is not needed to reproduce the dose.",
+    "claimed_formula": "res = carbohydrates/ratio + (glycaemia - objective)/correction, rounded to the minimum unit   (no IOB term)"
+  },
+  "reference": {
+    "formula": "bolus = CHO/ICR + (G - G_target)/ISF - IOB",
+    "cite": "Zhu et al., Sensors 2020, Eq. 4 (PMC7570884, CC BY 4.0)"
+  },
+  "contract": {
+    "dose_function": [
+      "handleSubmit"
+    ],
+    "inputs": [
+      {
+        "name": "minimum",
+        "unit": "U (step size)",
+        "where_parsed": "form.minimum"
+      },
+      {
+        "name": "glycaemia",
+        "unit": "mg/dL",
+        "where_parsed": "form.glycaemia"
+      },
+      {
+        "name": "ratio",
+        "unit": "g/U",
+        "where_parsed": "form.ratio"
+      },
+      {
+        "name": "correction",
+        "unit": "U/(mg/dL)",
+        "where_parsed": "form.correction"
+      },
+      {
+        "name": "objective",
+        "unit": "mg/dL",
+        "where_parsed": "form.objective"
+      },
+      {
+        "name": "carbohydrates",
+        "unit": "g",
+        "where_parsed": "form.carbohydrates"
+      }
+    ],
+    "implemented_formula": "dose = carbs/ratio + (glycaemia - objective)/correction; then rounded to nearest multiple of minimum",
+    "suspected_deviations": [
+      {
+        "claim": "IOB (insulin on board) is not subtracted from the calculated dose",
+        "line_hint": "let res = form.carbohydrates / form.ratio + (form.glycaemia - form.objective) / form.correction;",
+        "why_it_matters": "Omitting IOB can lead to overdose, especially with recent boluses."
+      },
+      {
+        "claim": "No protection against division by zero when ratio, correction, or minimum equals zero",
+        "line_hint": "form.carbohydrates / form.ratio ... (form.glycaemia - form.objective) / form.correction",
+        "why_it_matters": "Zero divisor yields Infinity or NaN, causing incorrect dosing."
+      },
+      {
+        "claim": "Negative or non\u2011physiological inputs are accepted (e.g., negative glycaemia)",
+        "line_hint": "<Input type='number' min='0' ...>",
+        "why_it_matters": "Although min='0' is set, the code later casts empty string to 0, allowing invalid values to slip through."
+      },
+      {
+        "claim": "No upper dose ceiling is applied; extremely large doses could be recommended",
+        "line_hint": "setResult(res);",
+        "why_it_matters": "Safety limits are essential to prevent harmful overdoses."
+      },
+      {
+        "claim": "Rounding logic uses Number.EPSILON and double rounding, which may produce unexpected results for edge cases",
+        "line_hint": "Math.round((Math.round(res / form.minimum) * form.minimum + Number.EPSILON) * 100) / 100;",
+        "why_it_matters": "Complex rounding can cause dose inaccuracies, especially near boundaries."
+      }
+    ]
+  },
+  "tool_trace": [
+    {
+      "id": "gen-01",
+      "tool": "run_test",
+      "category": "input_validation",
+      "inputs": {
+        "glycaemia": ".5",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "60"
+      },
+      "returned": 4
+    },
+    {
+      "id": "gen-02",
+      "tool": "run_test",
+      "category": "locale_decimal",
+      "inputs": {
+        "glycaemia": "1,5",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "60"
+      },
+      "returned": "NaN"
+    },
+    {
+      "id": "gen-03",
+      "tool": "run_test",
+      "category": "divide_by_zero",
+      "inputs": {
+        "glycaemia": "150",
+        "ratio": "0",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "60"
+      },
+      "returned": "Infinity"
+    },
+    {
+      "id": "gen-04",
+      "tool": "run_test",
+      "category": "upper_bound",
+      "inputs": {
+        "glycaemia": "500",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "500"
+      },
+      "returned": 58
+    },
+    {
+      "id": "gen-05",
+      "tool": "run_test",
+      "category": "missing_value",
+      "inputs": {
+        "glycaemia": "",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "60"
+      },
+      "returned": 4
+    },
+    {
+      "id": "gen-06",
+      "tool": "run_test",
+      "category": "input_validation",
+      "inputs": {
+        "glycaemia": "150",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "-60"
+      },
+      "returned": -5
+    },
+    {
+      "id": "gen-07",
+      "tool": "run_test",
+      "category": "nominal",
+      "inputs": {
+        "glycaemia": "180",
+        "ratio": "8",
+        "correction": "40",
+        "objective": "90",
+        "carbohydrates": "40"
+      },
+      "returned": 7.5
+    },
+    {
+      "id": "gen-08",
+      "tool": "run_test",
+      "category": "iob_subtraction",
+      "inputs": {
+        "glycaemia": "150",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "60",
+        "iob_U": 2
+      },
+      "returned": 7
+    }
+  ],
+  "results": [
+    {
+      "case_id": "panc-nominal",
+      "category": "nominal",
+      "inputs": {
+        "glycaemia": "150",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "60"
+      },
+      "expected": "Match the reference formula within rounding",
+      "reference_U": 7.0,
+      "observed": 7,
+      "status": "pass",
+      "rule": "matches reference",
+      "severity": "info",
+      "detail": "7 U vs reference 7.00 U.",
+      "source": "seed",
+      "labelled_as": "nominal",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": 150,
+          "ratio": 10,
+          "correction": 50,
+          "objective": 100,
+          "carbohydrates": 60
+        },
+        "displayed_bolus": 7
+      }
+    },
+    {
+      "case_id": "panc-empty-ratio",
+      "category": "divide_by_zero",
+      "inputs": {
+        "glycaemia": "150",
+        "ratio": "",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "60"
+      },
+      "expected": "Reject a zero/blank ratio or sensitivity",
+      "reference_U": null,
+      "observed": "Infinity",
+      "status": "fail",
+      "rule": "division by zero produced an infinite dose",
+      "severity": "critical",
+      "detail": "A blank/zero divisor produced Infinity U. On a pump this is an unbounded over-delivery.",
+      "source": "seed",
+      "labelled_as": "divide_by_zero",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": 150,
+          "ratio": 0,
+          "correction": 50,
+          "objective": 100,
+          "carbohydrates": 60
+        },
+        "displayed_bolus": "Infinity"
+      },
+      "adjudication": {
+        "case_id": "panc-empty-ratio",
+        "verdict": "true_defect",
+        "cause": "Number('') converts empty string to 0, causing division by zero",
+        "explanation": "The code treats an empty ratio as zero, so CHO/ICR becomes 60/0 = Infinity, which is displayed as the bolus dose.",
+        "fix": "Validate that ratio is a positive number before using it in the calculation."
+      }
+    },
+    {
+      "case_id": "panc-comma-decimal",
+      "category": "locale_decimal",
+      "inputs": {
+        "glycaemia": "150",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "0,5"
+      },
+      "expected": "Parse '0,5' as 0.5 or reject the input",
+      "reference_U": 1.05,
+      "observed": "NaN",
+      "status": "fail",
+      "rule": "comma decimal rejected without telling the user",
+      "severity": "medium",
+      "detail": "A comma decimal ({'glycaemia': '150', 'ratio': '10', 'correction': '50', 'objective': '100', 'carbohydrates': '0,5'}) produced 'NaN' -- the calculator neither parsed it nor told the user why.",
+      "source": "seed",
+      "labelled_as": "locale_decimal",
+      "rationale": "",
+      "intended_U": 1.05,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": 150,
+          "ratio": 10,
+          "correction": 50,
+          "objective": 100,
+          "carbohydrates": null
+        },
+        "displayed_bolus": "NaN"
+      },
+      "adjudication": {
+        "case_id": "panc-comma-decimal",
+        "verdict": "true_defect",
+        "cause": "Number('0,5') yields NaN because the comma is not a valid decimal point in JavaScript",
+        "explanation": "Carbohydrates entered with a comma become NaN, making the entire bolus calculation NaN and shown as an error without informing the user about the format issue.",
+        "fix": "Replace commas with dots or use a locale\u2011aware parser before converting to Number."
+      }
+    },
+    {
+      "case_id": "panc-negative-carbs",
+      "category": "input_validation",
+      "inputs": {
+        "glycaemia": "150",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "-60"
+      },
+      "expected": "Reject the impossible input",
+      "reference_U": -5.0,
+      "observed": -5,
+      "status": "fail",
+      "rule": "impossible input accepted",
+      "severity": "high",
+      "detail": "Input {'glycaemia': '150', 'ratio': '10', 'correction': '50', 'objective': '100', 'carbohydrates': '-60'} is physically impossible yet the calculator returned -5 U instead of rejecting it.",
+      "source": "seed",
+      "labelled_as": "input_validation",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": 150,
+          "ratio": 10,
+          "correction": 50,
+          "objective": 100,
+          "carbohydrates": -60
+        },
+        "displayed_bolus": -5
+      },
+      "adjudication": {
+        "case_id": "panc-negative-carbs",
+        "verdict": "true_defect",
+        "cause": "No validation prevents negative carbohydrate values from being used directly",
+        "explanation": "Accepting \u201360 g carbs leads to a negative bolus of \u20135\u202fU, which is clinically impossible.",
+        "fix": "Reject or clamp carbohydrate inputs to non\u2011negative values."
+      }
+    },
+    {
+      "case_id": "panc-iob-stacking",
+      "category": "iob_subtraction",
+      "inputs": {
+        "glycaemia": "200",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "80"
+      },
+      "expected": "Subtract active insulin (IOB) from the dose",
+      "reference_U": 7.0,
+      "observed": 10,
+      "status": "fail",
+      "rule": "IOB not subtracted -> over-recommendation",
+      "severity": "high",
+      "detail": "With active insulin on board the reference dose is 7.00 U but the calculator recommended 10 U -- it never subtracts IOB.",
+      "source": "seed",
+      "labelled_as": "iob_subtraction",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": 200,
+          "ratio": 10,
+          "correction": 50,
+          "objective": 100,
+          "carbohydrates": 80
+        },
+        "displayed_bolus": 10
+      },
+      "adjudication": {
+        "case_id": "panc-iob-stacking",
+        "verdict": "true_defect",
+        "cause": "The formula omits the IOB subtraction term (\u2011 IOB)",
+        "explanation": "Without subtracting IOB, the bolus is over\u2011estimated: observed 10\u202fU vs. expected 7\u202fU.",
+        "fix": "Include IOB in the calculation: bolus = CHO/ICR + (G\u2011Gtarget)/ISF \u2011 IOB."
+      }
+    },
+    {
+      "case_id": "panc-huge-carbs",
+      "category": "upper_bound",
+      "inputs": {
+        "glycaemia": "150",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "500"
+      },
+      "expected": "Cap or warn above a safe maximum (~30 U)",
+      "reference_U": 51.0,
+      "observed": 51,
+      "status": "fail",
+      "rule": "dose exceeds a safe ceiling with no warning",
+      "severity": "high",
+      "detail": "The calculator showed 51 U with no upper-bound warning (Huckvale: most apps placed no dose limit).",
+      "source": "seed",
+      "labelled_as": "upper_bound",
+      "rationale": "",
+      "intended_U": null,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": 150,
+          "ratio": 10,
+          "correction": 50,
+          "objective": 100,
+          "carbohydrates": 500
+        },
+        "displayed_bolus": 51
+      },
+      "adjudication": {
+        "case_id": "panc-huge-carbs",
+        "verdict": "spec_ambiguity",
+        "cause": "Code computes the dose correctly but provides no warning when the result exceeds a safety threshold",
+        "explanation": "A carbohydrate input of 500\u202fg yields a bolus of 51\u202fU, matching the reference dose; the lack of a warning depends on whether the spec requires one.",
+        "fix": "Add a safety check that alerts the user if the calculated bolus exceeds a predefined maximum."
+      }
+    },
+    {
+      "case_id": "gen-01",
+      "category": "input_validation",
+      "inputs": {
+        "glycaemia": ".5",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "60"
+      },
+      "expected": "Reject the impossible input",
+      "reference_U": 4.01,
+      "observed": 4,
+      "status": "fail",
+      "rule": "impossible input accepted",
+      "severity": "high",
+      "detail": "Input {'glycaemia': '.5', 'ratio': '10', 'correction': '50', 'objective': '100', 'carbohydrates': '60'} is physically impossible yet the calculator returned 4 U instead of rejecting it.",
+      "source": "lightning",
+      "labelled_as": "input_validation",
+      "rationale": "Probe leading-decimal input \".5\" to see if parser accepts it or treats it as invalid/0",
+      "intended_U": null,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": 0.5,
+          "ratio": 10,
+          "correction": 50,
+          "objective": 100,
+          "carbohydrates": 60
+        },
+        "displayed_bolus": 4
+      },
+      "adjudication": {
+        "case_id": "gen-01",
+        "verdict": "test_error",
+        "cause": "Rounding to the minimum step (0.5) truncates the dose to 4\u202fU instead of the more precise 4.01\u202fU",
+        "explanation": "The observed dose follows the code\u2019s rounding rule; the test expects the unrounded value, which is not required by the implementation.",
+        "fix": "Adjust the test to accept the rounded result or change the rounding logic if higher precision is needed."
+      }
+    },
+    {
+      "case_id": "gen-02",
+      "category": "locale_decimal",
+      "inputs": {
+        "glycaemia": "1,5",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "60"
+      },
+      "expected": "Parse '0,5' as 0.5 or reject the input",
+      "reference_U": 4.03,
+      "observed": "NaN",
+      "status": "fail",
+      "rule": "comma decimal rejected without telling the user",
+      "severity": "medium",
+      "detail": "A comma decimal ({'glycaemia': '1,5', 'ratio': '10', 'correction': '50', 'objective': '100', 'carbohydrates': '60'}) produced 'NaN' -- the calculator neither parsed it nor told the user why.",
+      "source": "lightning",
+      "labelled_as": "locale_decimal",
+      "rationale": "Probe comma decimal \"1,5\" to expose locale parsing defect (recall class from Omnipod 5)",
+      "intended_U": 4.03,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": null,
+          "ratio": 10,
+          "correction": 50,
+          "objective": 100,
+          "carbohydrates": 60
+        },
+        "displayed_bolus": "NaN"
+      },
+      "adjudication": {
+        "case_id": "gen-02",
+        "verdict": "true_defect",
+        "cause": "Number('1,5') returns NaN due to the comma decimal separator",
+        "explanation": "The glycaemia input becomes NaN, causing the bolus to be NaN and shown as an error without guiding the user to use a dot.",
+        "fix": "Convert locale\u2011specific decimal separators (comma) to dot before numeric conversion."
+      }
+    },
+    {
+      "case_id": "gen-03",
+      "category": "divide_by_zero",
+      "inputs": {
+        "glycaemia": "150",
+        "ratio": "0",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "60"
+      },
+      "expected": "Reject a zero/blank ratio or sensitivity",
+      "reference_U": null,
+      "observed": "Infinity",
+      "status": "fail",
+      "rule": "division by zero produced an infinite dose",
+      "severity": "critical",
+      "detail": "A blank/zero divisor produced Infinity U. On a pump this is an unbounded over-delivery.",
+      "source": "lightning",
+      "labelled_as": "divide_by_zero",
+      "rationale": "Probe zero divisor in ratio field to see if Infinity/NaN is produced",
+      "intended_U": null,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": 150,
+          "ratio": 0,
+          "correction": 50,
+          "objective": 100,
+          "carbohydrates": 60
+        },
+        "displayed_bolus": "Infinity"
+      },
+      "adjudication": {
+        "case_id": "gen-03",
+        "verdict": "true_defect",
+        "cause": "Number('0') yields zero, leading to division by zero and Infinity",
+        "explanation": "A ratio of zero makes the CHO/ICR term infinite, which the code displays as the bolus dose.",
+        "fix": "Reject zero or empty ratio values and prompt the user to enter a valid positive number."
+      }
+    },
+    {
+      "case_id": "gen-04",
+      "category": "upper_bound",
+      "inputs": {
+        "glycaemia": "500",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "500"
+      },
+      "expected": "Cap or warn above a safe maximum (~30 U)",
+      "reference_U": 58.0,
+      "observed": 58,
+      "status": "fail",
+      "rule": "dose exceeds a safe ceiling with no warning",
+      "severity": "high",
+      "detail": "The calculator showed 58 U with no upper-bound warning (Huckvale: most apps placed no dose limit).",
+      "source": "lightning",
+      "labelled_as": "upper_bound",
+      "rationale": "Probe very large but in-type input to check for unbounded dose recommendation",
+      "intended_U": null,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": 500,
+          "ratio": 10,
+          "correction": 50,
+          "objective": 100,
+          "carbohydrates": 500
+        },
+        "displayed_bolus": 58
+      },
+      "adjudication": {
+        "case_id": "gen-04",
+        "verdict": "spec_ambiguity",
+        "cause": "The dose is calculated correctly but no warning is issued for high values",
+        "explanation": "With glycaemia 500\u202fmg/dL and 500\u202fg carbs the bolus is 58\u202fU, matching the reference; whether a warning is required is unspecified.",
+        "fix": "Implement a high\u2011dose alert if the bolus exceeds a clinically defined limit."
+      }
+    },
+    {
+      "case_id": "gen-05",
+      "category": "missing_value",
+      "inputs": {
+        "glycaemia": "",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "60"
+      },
+      "expected": "Block the calculation and prompt for the missing value",
+      "reference_U": null,
+      "observed": 4,
+      "status": "fail",
+      "rule": "missing input produced a finite dose",
+      "severity": "high",
+      "detail": "A required field was blank yet the calculator showed 4 U, treating the missing value as zero.",
+      "source": "lightning",
+      "labelled_as": "missing_value",
+      "rationale": "Probe blank required input glycaemia to ensure it is not silently treated as zero",
+      "intended_U": null,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": 0,
+          "ratio": 10,
+          "correction": 50,
+          "objective": 100,
+          "carbohydrates": 60
+        },
+        "displayed_bolus": 4
+      },
+      "adjudication": {
+        "case_id": "gen-05",
+        "verdict": "true_defect",
+        "cause": "Empty glycaemia string is coerced to 0 by Number('')",
+        "explanation": "Missing glycaemia defaults to 0, producing a bolus of 4\u202fU instead of treating the input as invalid.",
+        "fix": "Validate that glycaemia is provided and greater than zero before calculation."
+      }
+    },
+    {
+      "case_id": "gen-06",
+      "category": "input_validation",
+      "inputs": {
+        "glycaemia": "150",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "-60"
+      },
+      "expected": "Reject the impossible input",
+      "reference_U": -5.0,
+      "observed": -5,
+      "status": "fail",
+      "rule": "impossible input accepted",
+      "severity": "high",
+      "detail": "Input {'glycaemia': '150', 'ratio': '10', 'correction': '50', 'objective': '100', 'carbohydrates': '-60'} is physically impossible yet the calculator returned -5 U instead of rejecting it.",
+      "source": "lightning",
+      "labelled_as": "input_validation",
+      "rationale": "Probe negative carbohydrate input to ensure rejection",
+      "intended_U": null,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": 150,
+          "ratio": 10,
+          "correction": 50,
+          "objective": 100,
+          "carbohydrates": -60
+        },
+        "displayed_bolus": -5
+      },
+      "adjudication": {
+        "case_id": "gen-06",
+        "verdict": "true_defect",
+        "cause": "No validation blocks negative carbohydrate values",
+        "explanation": "Accepting \u201360\u202fg carbs results in a negative bolus of \u20135\u202fU, which is not clinically possible.",
+        "fix": "Reject or correct negative carbohydrate inputs."
+      }
+    },
+    {
+      "case_id": "gen-07",
+      "category": "nominal",
+      "inputs": {
+        "glycaemia": "180",
+        "ratio": "8",
+        "correction": "40",
+        "objective": "90",
+        "carbohydrates": "40"
+      },
+      "expected": "Match the reference formula within rounding",
+      "reference_U": 7.25,
+      "observed": 7.5,
+      "status": "pass",
+      "rule": "matches reference",
+      "severity": "info",
+      "detail": "7.5 U vs reference 7.25 U.",
+      "source": "lightning",
+      "labelled_as": "nominal",
+      "rationale": "In-range nominal case with different numbers to verify reference formula within rounding",
+      "intended_U": null,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": 180,
+          "ratio": 8,
+          "correction": 40,
+          "objective": 90,
+          "carbohydrates": 40
+        },
+        "displayed_bolus": 7.5
+      }
+    },
+    {
+      "case_id": "gen-08",
+      "category": "iob_subtraction",
+      "inputs": {
+        "glycaemia": "150",
+        "ratio": "10",
+        "correction": "50",
+        "objective": "100",
+        "carbohydrates": "60",
+        "iob_U": 2
+      },
+      "expected": "Subtract active insulin (IOB) from the dose",
+      "reference_U": 7.0,
+      "observed": 7,
+      "status": "pass",
+      "rule": "IOB accounted for",
+      "severity": "info",
+      "detail": "",
+      "source": "lightning",
+      "labelled_as": "iob_subtraction",
+      "rationale": "Probe IOB subtraction: with 2U IOB the dose should be reduced, exposing missing IOB handling",
+      "intended_U": null,
+      "raw": {
+        "coerced": {
+          "minimum": 0.5,
+          "glycaemia": 150,
+          "ratio": 10,
+          "correction": 50,
+          "objective": 100,
+          "carbohydrates": 60
+        },
+        "displayed_bolus": 7
+      }
+    }
+  ],
+  "proof": null,
+  "summary": {
+    "tests": 14,
+    "passed": 3,
+    "failed": 11,
+    "true_defects": 8,
+    "by_severity": {
+      "critical": 2,
+      "high": 7,
+      "medium": 2
+    }
+  },
+  "models": {
+    "locate_adjudicate_patch": "nvidia/nemotron-3-super-120b-a12b",
+    "test_tools": "nvidia/Nemotron-3_5-Lightning"
+  },
+  "usage": {
+    "nvidia/nemotron-3-super-120b-a12b": {
+      "in": 6675,
+      "out": 2518,
+      "calls": 2
+    },
+    "nvidia/Nemotron-3_5-Lightning": {
+      "in": 4937,
+      "out": 827,
+      "calls": 2
+    }
+  },
+  "cost_usd": 0.0048,
+  "seconds": 19.6,
+  "generated_at": "2026-10-04"
+}
